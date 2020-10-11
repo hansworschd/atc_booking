@@ -1,5 +1,7 @@
 <?php 
 
+	putenv('GDFONTPATH=' . realpath('.'));
+
 	$MASTER_DATE = new DateTime();
 	if(isset($_GET['nextWeek'])){
 		$MASTER_DATE->add(new DateInterval('P7D'));
@@ -7,6 +9,10 @@
 
 	include 'booking.php';
 	
+	/**
+	* Get all bookings from specific stations
+	* @return list with bookings from stations
+	*/
 	function get_bookings($stations){
 		$xml = simplexml_load_file('http://vatbook.euroutepro.com/xml2.php');
 			
@@ -15,6 +21,7 @@
 		for($i = 0; $i<count($atc_bookings); $i++){
 			$station = $atc_bookings[$i]->callsign;
 			for($j = 0; $j<count($stations); $j++){
+				// check if booking station matches with list
 				if(strpos($station,$stations[$j]) !== false){
 					$requested_bookings[] = new Booking($atc_bookings[$i]->name, $atc_bookings[$i]->time_start, $atc_bookings[$i]->time_end, $atc_bookings[$i]->callsign);
 					break;
@@ -23,6 +30,10 @@
 		}
 		
 		return $requested_bookings;
+	}
+	
+	function write_string($im, $font, $x, $y, $string, $color){
+		imagettftext ($im , 20 , 0 , $x , $y , $color ,"MyriadProRegular" , $string );
 	}
 	
 	function next_station_is_same($currentElement, $nextElement){
@@ -38,9 +49,12 @@
 	
 	$booking_matrix = [];
 	
+	// Iterate over the stations and create a booking matrix
 	for($i = 0; $i<count($edff_main_stations); $i++){
+		// First row contains the station
 		$booking_matrix[$i][0] = $edff_main_stations[$i]; 
 		$day = clone $MASTER_DATE;
+		// Loop over the next days
 		for($j = 1; $j<8; $j++){
 			$found_booking = 0;
 			
@@ -87,7 +101,7 @@
 	
 	$day = clone $MASTER_DATE;
 	for($i = 1; $i<8; $i++){
-		imagestring($im, 3, $cell_width*$i, $row*$lineHeight, $day->format("D d.m."), $color_black);
+		write_string($im, 3, $cell_width*$i, $row*$lineHeight, $day->format("D d.m."), $color_black);
 		$day->add(new DateInterval('P1D'));
 	}
 	$row = 2;
@@ -97,7 +111,7 @@
 	
 	for($i = 0; $i<count($booking_matrix); $i++){
 		$day = clone $MASTER_DATE;
-		imagestring($im, 3, 5, $lineHeight*$row, $booking_matrix[$i][0], $color_black);
+		write_string($im, 3, 5, $lineHeight*$row, $booking_matrix[$i][0], $color_black);
 		$maxHeight = 1;
 		for($j = 1; $j<count($booking_matrix[$i]); $j++){
 			
@@ -119,7 +133,7 @@
 						$color = $color_red;
 					}
 				}
-				imagestring($im, 3, $cell_width*$j, $lineHeight*$row, $booking_matrix[$i][$j][$k], $color);
+				write_string($im, 3, $cell_width*$j, $lineHeight*$row, $booking_matrix[$i][$j][$k], $color);
 				$row++;
 			}
 			$row = $row - count($booking_matrix[$i][$j]);
@@ -145,7 +159,7 @@
 	$column = 0;
 	
 	for($i = 0; $i<count($all_users); $i++){
-		imagestring($im, 3, $column*250+5, $lineHeight*$row, $all_users[$i]['abbreviation'].": ".$all_users[$i]['name'], $color_black);
+		write_string($im, 3, $column*250+5, $lineHeight*$row, $all_users[$i]['abbreviation'].": ".$all_users[$i]['name'], $color_black);
 		if($column === 2){
 			$column = 0;
 			$row++;
