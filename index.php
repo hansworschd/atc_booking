@@ -80,8 +80,7 @@ function next_station_is_same($currentElement, $nextElement)
     return false;
 }
 
-$edff_main_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDDF_N_APP", "EDDF_F_APP", "EDDF_U_APP", "EDDF_TWR", "EDDF_W_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_F_APP", "EDDS_TWR", "EDDS_GND", "EDFH_APP", "EDFH_TWR", "EDDR_APP", "EDDR_TWR", "EDFM_TWR", "EDSB_TWR"];
-
+$edff_main_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDGG_Z_CTR", "EDGG_R_CTR", "EDUU_W_CTR", "EDUU_T_CTR", "EDUU_N_CTR", "EDDF_N_APP", "EDDF_F_APP", "EDDF_U_APP", "EDDF_TWR", "EDDF_W_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_F_APP", "EDDS_TWR", "EDDS_GND", "EDDS_DEL", "EDFH_APP", "EDFH_TWR" , "EDDR_APP", "EDDR_TWR", "EDFM_TWR", "EDSB_TWR"];
 $booked_stations = get_bookings($edff_main_stations);
 
 /* Booking matrix contains all stations and bookings.. Still in progress!
