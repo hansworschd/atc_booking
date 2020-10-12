@@ -43,8 +43,12 @@ function get_bookings($stations)
 function write_string($im, $font, $x, $y, $string, $color)
 {
     putenv('GDFONTPATH='.realpath('.'));
-    imagettftext($im , 10 , 0 , $x , $y , $color ,dirname(__FILE__)."/MyriadProRegular.ttf", $string );
-    //imagestring($im, $font, $x, $y, $string, $color);
+    if(file_exists ( dirname(__FILE__)."/MyriadProRegular.ttf" )){
+        imagettftext($im , 10 , 0 , $x , $y , $color ,dirname(__FILE__)."/MyriadProRegular.ttf", $string );
+    }
+    else{
+        imagestring($im, $font, $x, $y, $string, $color);
+    }
 }
 
 /**
@@ -217,4 +221,5 @@ write_string($im, 2, 5, $lineHeight * $row, "Generated " . $generated_time->form
 // Set content to gif and create image
 header('Content-type: image/png');
 imagepng($im);
+imagedestroy($im);
 ?>
