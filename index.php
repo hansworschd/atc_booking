@@ -12,13 +12,14 @@ include 'booking.php';
  */
 function get_xml()
 {
-    if (!file_exists("cache.xml")) {
-        file_put_contents("cache.xml", file_get_contents("http://vatbook.euroutepro.com/xml2.php"));
+    $ver = isset($_GET['nextWeek']);
+    if (!file_exists("cache$ver.xml")) {
+        file_put_contents("cache$ver.xml", file_get_contents("http://vatbook.euroutepro.com/xml2.php"));
     }
-    $xml = simplexml_load_file('cache.xml');
+    $xml = simplexml_load_file("cache$ver.xml");
     if (time() >= strtotime($xml->timestamp) + 60) {
-        file_put_contents("cache.xml", file_get_contents("http://vatbook.euroutepro.com/xml2.php"));
-        $xml = simplexml_load_file('cache.xml');
+        file_put_contents("cache$ver.xml", file_get_contents("http://vatbook.euroutepro.com/xml2.php"));
+        $xml = simplexml_load_file("cache$ver.xml");
     }
     return $xml;
 }
@@ -127,7 +128,7 @@ for ($i = 0; $i < count($edff_main_stations); $i++) {
     }
 }
 
-$imageHeight = 700;
+$imageHeight = 800;
 $imageWidth = 800;
 
 // Create images
