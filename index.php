@@ -7,14 +7,30 @@ if (isset($_GET['nextWeek'])) {
 include 'booking.php';
 
 /**
+ * Get the cached xml data
+ * @return data
+ */
+function get_xml()
+{
+    if (!file_exists("cache.xml")) {
+        file_put_contents("cache.xml", file_get_contents("http://vatbook.euroutepro.com/xml2.php"));
+    }
+    $xml = simplexml_load_file('cache.xml');
+    if (time() >= strtotime($xml->timestamp) + 60) {
+        file_put_contents("cache.xml", file_get_contents("http://vatbook.euroutepro.com/xml2.php"));
+        $xml = simplexml_load_file('cache.xml');
+    }
+    return $xml;
+}
+
+/**
  * Get all bookings from specific stations
  * @param array containing atc stations
  * @return array with bookings from stations
  */
 function get_bookings($stations)
 {
-    $xml = simplexml_load_file('http://vatbook.euroutepro.com/xml2.php');
-
+    $xml = get_xml();
     $atc_bookings = $xml->atcs->booking;
     $requested_bookings = [];
     for ($i = 0; $i < count($atc_bookings); $i++) {
@@ -42,11 +58,10 @@ function get_bookings($stations)
  */
 function write_string($im, $font, $x, $y, $string, $color)
 {
-    putenv('GDFONTPATH='.realpath('.'));
-    if(file_exists ( dirname(__FILE__)."/MyriadProRegular.ttf" )){
-        imagettftext($im , 10 , 0 , $x , $y , $color ,dirname(__FILE__)."/MyriadProRegular.ttf", $string );
-    }
-    else{
+    putenv('GDFONTPATH=' . realpath('.'));
+    if (file_exists(dirname(__FILE__) . "/MyriadProRegular.ttf")) {
+        imagettftext($im, 10, 0, $x, $y, $color, dirname(__FILE__) . "/MyriadProRegular.ttf", $string);
+    } else {
         imagestring($im, $font, $x, $y, $string, $color);
     }
 }
@@ -65,20 +80,20 @@ function next_station_is_same($currentElement, $nextElement)
     return false;
 }
 
-$edff_main_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDDF_N_APP", "EDDF_F_APP", "EDDF_U_APP", "EDDF_TWR", "EDDF_W_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_F_APP", "EDDS_TWR", "EDDS_GND", "EDFH_APP", "EDFH_TWR" , "EDDR_APP", "EDDR_TWR", "EDFM_TWR", "EDSB_TWR"];
+$edff_main_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDDF_N_APP", "EDDF_F_APP", "EDDF_U_APP", "EDDF_TWR", "EDDF_W_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_F_APP", "EDDS_TWR", "EDDS_GND", "EDFH_APP", "EDFH_TWR", "EDDR_APP", "EDDR_TWR", "EDFM_TWR", "EDSB_TWR"];
 
 $booked_stations = get_bookings($edff_main_stations);
 
 /* Booking matrix contains all stations and bookings.. Still in progress!
 
-   [STATION[DATE[BOOKINGS]]
+[STATION[DATE[BOOKINGS]]
 
 e.g.
-     <Station>   <---- Day 1-----------> <-- Day 2--> <-- Day 3-->...
-    [EDDF_TWR,[[12-14 LuEw,16-18 PaBue],[18-20 KaWe],[10-20 LuEw]], NEXT_STATION,[ ... ]]
+<Station>   <---- Day 1-----------> <-- Day 2--> <-- Day 3-->...
+[EDDF_TWR,[[12-14 LuEw,16-18 PaBue],[18-20 KaWe],[10-20 LuEw]], NEXT_STATION,[ ... ]]
 
 Day cell is again array to handle multiple bookings each day
-*/
+ */
 $booking_matrix = [];
 
 // Iterate over the stations and create a booking matrix
@@ -112,7 +127,6 @@ for ($i = 0; $i < count($edff_main_stations); $i++) {
         $day->add(new DateInterval("P1D"));
     }
 }
-
 
 $imageHeight = 700;
 $imageWidth = 800;
@@ -222,4 +236,3 @@ write_string($im, 2, 5, $lineHeight * $row, "Generated " . $generated_time->form
 header('Content-type: image/png');
 imagepng($im);
 imagedestroy($im);
-?>
