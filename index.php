@@ -42,8 +42,9 @@ function get_bookings($stations)
  */
 function write_string($im, $font, $x, $y, $string, $color)
 {
-    //imagettftext ($im , 20 , 0 , $x , $y , $color ,"MyriadProRegular.ttf" , $string );
-    imagestring($im, $font, $x, $y, $string, $color);
+    putenv('GDFONTPATH='.realpath('.'));
+    imagettftext($im , 10 , 0 , $x , $y , $color ,dirname(__FILE__)."/MyriadProRegular.ttf", $string );
+    //imagestring($im, $font, $x, $y, $string, $color);
 }
 
 /**
@@ -60,7 +61,7 @@ function next_station_is_same($currentElement, $nextElement)
     return false;
 }
 
-$edff_main_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDDF_N_APP", "EDDF_F_APP", "EDDF_U_APP", "EDDF_TWR", "EDDF_W_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_F_APP", "EDDS_TWR", "EDDS_GND"];
+$edff_main_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDDF_N_APP", "EDDF_F_APP", "EDDF_U_APP", "EDDF_TWR", "EDDF_W_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_F_APP", "EDDS_TWR", "EDDS_GND", "EDFH_APP", "EDFH_TWR" , "EDDR_APP", "EDDR_TWR", "EDFM_TWR", "EDSB_TWR"];
 
 $booked_stations = get_bookings($edff_main_stations);
 
@@ -109,7 +110,7 @@ for ($i = 0; $i < count($edff_main_stations); $i++) {
 }
 
 
-$imageHeight = 500;
+$imageHeight = 700;
 $imageWidth = 800;
 
 // Create images
@@ -121,7 +122,7 @@ $color_gray = imagecolorallocate($im, 210, 210, 210);
 $color_red = imagecolorallocate($im, 190, 40, 40);
 
 $row = 1;
-$lineHeight = 13;
+$lineHeight = 15;
 $cell_width = 104;
 
 // Set date header columns
