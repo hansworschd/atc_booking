@@ -81,7 +81,12 @@ function next_station_is_same($currentElement, $nextElement)
     return false;
 }
 
-$edff_main_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDGG_Z_CTR", "EDGG_R_CTR", "EDUU_W_CTR", "EDUU_T_CTR", "EDUU_N_CTR", "EDDF_N_APP", "EDDF_F_APP", "EDDF_U_APP", "EDDF_TWR", "EDDF_W_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_F_APP", "EDDS_TWR", "EDDS_GND", "EDDS_DEL", "EDFH_APP", "EDFH_TWR" , "EDDR_APP", "EDDR_TWR", "EDFM_TWR", "EDSB_TWR"];
+$stationsFile = fopen("allStations.csv", "r") or die("Unable to open file!");
+$allStationsString = fgets($stationsFile);
+
+$edff_min_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDDF_N_APP", "EDDF_U_APP","EDDF_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_TWR", "EDDS_GND"];
+$edff_main_stations =  explode(',',$allStationsString);
+
 $booked_stations = get_bookings($edff_main_stations);
 
 /* Booking matrix contains all stations and bookings.. Still in progress!
@@ -120,7 +125,12 @@ for ($i = 0; $i < count($edff_main_stations); $i++) {
         }
         // If no booking found, set it to open
         if (!$found_booking) {
-            $cellObject[] = "open";
+			if(in_array($edff_main_stations[$i],$edff_min_stations)){
+				$cellObject[] = "open";
+			}
+			else {
+				$cellObject[] = null;
+			}
         }
 
         $booking_matrix[$i][$j] = $cellObject;
@@ -128,8 +138,36 @@ for ($i = 0; $i < count($edff_main_stations); $i++) {
     }
 }
 
-$imageHeight = 800;
-$imageWidth = 800;
+$tempBookingMatrix = [];
+
+for($i = 0; $i<count($booking_matrix); $i++){
+	$hasBookings = false;
+	for($j = 1; $j<count($booking_matrix[$i]); $j++){	
+		
+		for($k = 0; $k<count($booking_matrix[$i][$j]);$k++){
+			//echo $booking_matrix[$i][$j][$k]."<br>";
+			if($booking_matrix[$i][$j][$k] !== null){
+				$hasBookings = true;
+				break;
+			}
+		}	
+		
+	}
+	if($hasBookings){
+		$tempBookingMatrix[] = $booking_matrix[$i];
+	}
+}
+
+// Set array with all users
+$all_users = [];
+for ($i = 0; $i < count($booked_stations); $i++) {
+    $all_users[] = ["name" => $booked_stations[$i]->name, "abbreviation" => $booked_stations[$i]->abbreviation];
+}
+
+$booking_matrix = $tempBookingMatrix;
+
+$imageHeight = count($booking_matrix) * 30 + count($all_users) * 10;
+$imageWidth = 820;
 
 // Create images
 $im = imagecreate($imageWidth, $imageHeight);
@@ -204,11 +242,7 @@ for ($i = 0; $i < count($booking_matrix); $i++) {
 
 $row = $row + 3;
 
-// Set array with all users
-$all_users = [];
-for ($i = 0; $i < count($booked_stations); $i++) {
-    $all_users[] = ["name" => $booked_stations[$i]->name, "abbreviation" => $booked_stations[$i]->abbreviation];
-}
+
 
 // Remove duplicated users and sort them by their first names
 $all_users = array_map("unserialize", array_unique(array_map("serialize", $all_users)));
