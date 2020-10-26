@@ -166,7 +166,7 @@ for ($i = 0; $i < count($booked_stations); $i++) {
 
 $booking_matrix = $tempBookingMatrix;
 
-$imageHeight = count($booking_matrix) * 30 + count($all_users) * 10;
+$imageHeight = count($booking_matrix) * 30 + ceil(count($all_users) / 3) * 15;
 $imageWidth = 820;
 
 // Create images
@@ -264,7 +264,7 @@ for ($i = 0; $i < count($all_users); $i++) {
 $row += 2;
 
 $generated_time = new DateTime();
-write_string($im, 2, 5, $lineHeight * $row, "Generated " . $generated_time->format("d.m.Y H:i:s"), $color_gray);
+write_string($im, 2, 5, $lineHeight * $row, "Generated " . $generated_time->format("d.m.Y H:i:s")." ".count($booking_matrix), $color_gray);
 
 // Set content to gif and create image
 header('Content-type: image/png');
