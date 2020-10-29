@@ -84,7 +84,7 @@ function next_station_is_same($currentElement, $nextElement)
 $stationsFile = fopen("allStations.csv", "r") or die("Unable to open file!");
 $allStationsString = fgets($stationsFile);
 
-$edff_min_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDDF_N_APP", "EDDF_U_APP","EDDF_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_TWR", "EDDS_GND"];
+$edff_min_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDUU_W_CTR", "EDDF_N_APP", "EDDF_U_APP","EDDF_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_TWR", "EDDS_GND", "EDDS_DEL"];
 $edff_main_stations =  explode(',',$allStationsString);
 
 $booked_stations = get_bookings($edff_main_stations);
@@ -215,7 +215,7 @@ for ($i = 0; $i < count($booking_matrix); $i++) {
                 $color = $color_red;
             }
             if ($day->format("N") === "5" && $booking_matrix[$i][$j][$k] === "open"
-                && (substr($booking_matrix[$i][0], 0, 4) === "EDDF" || substr($booking_matrix[$i][0], 0, 6) === "EDGG_E")) {
+                && (substr($booking_matrix[$i][0], 0, 4) === "EDDF" || substr($booking_matrix[$i][0], 0, 6) === "EDGG_E" || substr($booking_matrix[$i][0], 0, 6) === "EDUU_W")) {
                 $color = $color_red;
             }
 
