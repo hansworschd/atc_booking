@@ -7,42 +7,75 @@ if (isset($_GET['nextWeek'])) {
 include 'booking.php';
 
 /**
- * Get the cached xml data
- * @return data
+ * Get the bookings as json object
+ * @param $date_start DateTime is the starting point
+ * @return mixed
  */
-function get_xml()
+function get_json($date_start)
 {
-    $ver = isset($_GET['nextWeek']);
-    if (!file_exists("cache$ver.xml")) {
-        file_put_contents("cache$ver.xml", file_get_contents("http://vatbook.euroutepro.com/xml2.php"));
-    }
-    $xml = simplexml_load_file("cache$ver.xml");
-    if (time() >= strtotime($xml->timestamp) + 60) {
-        file_put_contents("cache$ver.xml", file_get_contents("http://vatbook.euroutepro.com/xml2.php"));
-        $xml = simplexml_load_file("cache$ver.xml");
-    }
-    return $xml;
+    $curl = curl_init();
+    $date_start_string = $date_start->format("d.m.Y");
+
+    $date_end = $date_start->add(new DateInterval('P7D'));
+    $date_end_string = $date_end->format("d.m.Y");
+
+    $url = "https://vatsim-germany.org/api/booking/atc/daterange/$date_start_string/$date_end_string";
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+            'X-Requested-With: XMLHttpRequest',
+            'Content-Type: application/json',
+            'Sec-Fetch-Mode: cors',
+            'Sec-Fetch-Site: same-origin',
+            'Sec-Fetch-Dest: empty',
+            'Accept-Language: de,en;q=0.9',
+            'Accept: application/json, text/plain, */*'
+        ),
+    ));
+
+    $response = curl_exec($curl);
+
+    curl_close($curl);
+    return json_decode($response);
 }
 
 /**
  * Get all bookings from specific stations
  * @param array containing atc stations
+ * @param DateTime main start date
  * @return array with bookings from stations
  */
-function get_bookings($stations)
+function get_bookings($stations, $start_date)
 {
-    $xml = get_xml();
-    $atc_bookings = $xml->atcs->booking;
+    $atc_bookings = get_json($start_date);
+
     $requested_bookings = [];
-    for ($i = 0; $i < count($atc_bookings); $i++) {
-        $station = $atc_bookings[$i]->callsign;
-        for ($j = 0; $j < count($stations); $j++) {
-            // check if booking station matches with list
-            if (strpos($station, $stations[$j]) !== false) {
-                $requested_bookings[] = new Booking($atc_bookings[$i]->name, $atc_bookings[$i]->time_start, $atc_bookings[$i]->time_end, $atc_bookings[$i]->callsign);
-                break;
+    foreach ($atc_bookings as $key => $booking) {
+        if (isset($booking->station)) {
+            $station = $booking->station->ident;
+            for ($j = 0; $j < count($stations); $j++) {
+                // check if booking station matches with list
+                if (strpos($station, $stations[$j]) !== false) {
+                    $requested_bookings[] = new Booking(
+                        $booking->controller->firstname . " " . $booking->controller->lastname,
+                        $booking->starts_at,
+                        $booking->ends_at,
+                        $station,
+                        $booking->training,
+                        $booking->event
+                    );
+                    break;
+                }
             }
         }
+
     }
 
     return $requested_bookings;
@@ -84,10 +117,10 @@ function next_station_is_same($currentElement, $nextElement)
 $stationsFile = fopen("allStations.csv", "r") or die("Unable to open file!");
 $allStationsString = fgets($stationsFile);
 
-$edff_min_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDUU_W_CTR", "EDDF_N_APP", "EDDF_U_APP","EDDF_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_TWR", "EDDS_GND", "EDDS_DEL"];
-$edff_main_stations =  explode(',',$allStationsString);
+$edff_min_stations = ["EDGG_CTR", "EDGG_E_CTR", "EDUU_W_CTR", "EDDF_N_APP", "EDDF_U_APP", "EDDF_TWR", "EDDF_C_GND", "EDDF_DEL", "EDDS_N_APP", "EDDS_TWR", "EDDS_GND", "EDDS_DEL"];
+$edff_main_stations = explode(',', $allStationsString);
 
-$booked_stations = get_bookings($edff_main_stations);
+$booked_stations = get_bookings($edff_main_stations, clone $MASTER_DATE);
 
 /* Booking matrix contains all stations and bookings.. Still in progress!
 
@@ -114,23 +147,27 @@ for ($i = 0; $i < count($edff_main_stations); $i++) {
 
         // Check if there is a booking at the specific date
         for ($k = 0; $k < count($booked_stations); $k++) {
-            $booking_date_start = DateTime::createFromFormat('Y-m-d H:i:s', $booked_stations[$k]->time_start);
-            $booking_date_end = DateTime::createFromFormat('Y-m-d H:i:s', $booked_stations[$k]->time_end);
+
+            $booking_date_start = DateTime::createFromFormat('Y-m-d\TH:i:s', $booked_stations[$k]->time_start);
+            $booking_date_end = DateTime::createFromFormat('Y-m-d\TH:i:s', $booked_stations[$k]->time_end);
 
             // append all bookings as array
             if ($booking_date_start->format("Y-m-d") === $day->format("Y-m-d") && $edff_main_stations[$i] == $booked_stations[$k]->callsign) {
-                $cellObject[] = $booked_stations[$k]->abbreviation . " " . $booking_date_start->format("H") . "-" . $booking_date_end->format("H");
+                $cellContent = $booked_stations[$k]->abbreviation . " " . $booking_date_start->format("H") . "-" . $booking_date_end->format("H");
+                // Maybe add event later on
+                $additionalCellInfo = $booked_stations[$k]->training;
+
+                $cellObject[] = ["content" => $cellContent, "additionalInformation" => $additionalCellInfo];
                 $found_booking = true;
             }
         }
         // If no booking found, set it to open
         if (!$found_booking) {
-			if(in_array($edff_main_stations[$i],$edff_min_stations)){
-				$cellObject[] = "open";
-			}
-			else {
-				$cellObject[] = null;
-			}
+            if (in_array($edff_main_stations[$i], $edff_min_stations)) {
+                $cellObject[] = ["content" => "open", "additionalInformation" => false];
+            } else {
+                $cellObject[] = ["content" => null, "additionalInformation" => null];
+            }
         }
 
         $booking_matrix[$i][$j] = $cellObject;
@@ -140,22 +177,21 @@ for ($i = 0; $i < count($edff_main_stations); $i++) {
 
 $tempBookingMatrix = [];
 
-for($i = 0; $i<count($booking_matrix); $i++){
-	$hasBookings = false;
-	for($j = 1; $j<count($booking_matrix[$i]); $j++){	
-		
-		for($k = 0; $k<count($booking_matrix[$i][$j]);$k++){
-			//echo $booking_matrix[$i][$j][$k]."<br>";
-			if($booking_matrix[$i][$j][$k] !== null){
-				$hasBookings = true;
-				break;
-			}
-		}	
-		
-	}
-	if($hasBookings){
-		$tempBookingMatrix[] = $booking_matrix[$i];
-	}
+for ($i = 0; $i < count($booking_matrix); $i++) {
+    $hasBookings = false;
+    for ($j = 1; $j < count($booking_matrix[$i]); $j++) {
+
+        for ($k = 0; $k < count($booking_matrix[$i][$j]); $k++) {
+            if ($booking_matrix[$i][$j][$k]['content'] !== null) {
+                $hasBookings = true;
+                break;
+            }
+        }
+
+    }
+    if ($hasBookings) {
+        $tempBookingMatrix[] = $booking_matrix[$i];
+    }
 }
 
 // Set array with all users
@@ -176,6 +212,8 @@ $color_withe = imagecolorallocate($im, 255, 255, 255);
 $color_black = imagecolorallocate($im, 0, 0, 0);
 $color_gray = imagecolorallocate($im, 210, 210, 210);
 $color_red = imagecolorallocate($im, 190, 40, 40);
+$color_orange = imagecolorallocate($im, 255, 140, 0);
+$color_blue = imagecolorallocate($im, 072, 118, 255);
 
 $row = 1;
 $lineHeight = 15;
@@ -207,24 +245,28 @@ for ($i = 0; $i < count($booking_matrix); $i++) {
         // Write bookings
         for ($k = 0; $k < count($booking_matrix[$i][$j]); $k++) {
             $color = $color_gray;
-            if ($booking_matrix[$i][$j][$k] !== "open") {
+            if ($booking_matrix[$i][$j][$k] === null || $booking_matrix[$i][$j][$k]['content'] !== "open") {
                 $color = $color_black;
             }
-            if ($day->format("N") === "4" && $booking_matrix[$i][$j][$k] === "open"
+            if ($day->format("N") === "4" && $booking_matrix[$i][$j][$k]['content'] === "open"
                 && (substr($booking_matrix[$i][0], 0, 4) === "EDDS" || substr($booking_matrix[$i][0], 0, 6) === "EDGG_E")) {
                 $color = $color_red;
             }
-            if ($day->format("N") === "5" && $booking_matrix[$i][$j][$k] === "open"
+            if ($day->format("N") === "5" && $booking_matrix[$i][$j][$k]['content'] === "open"
                 && (substr($booking_matrix[$i][0], 0, 4) === "EDDF" || substr($booking_matrix[$i][0], 0, 6) === "EDGG_E" || substr($booking_matrix[$i][0], 0, 6) === "EDUU_W")) {
                 $color = $color_red;
             }
 
-            // If is requested but open than make it to WANTED
-            if ($color === $color_red && $booking_matrix[$i][$j][$k] == "open") {
-                $booking_matrix[$i][$j][$k] = "WANTED";
+            if (isset($booking_matrix[$i][$j][$k]['additionalInformation']) && $booking_matrix[$i][$j][$k]['additionalInformation']) {
+                $color = $color_blue;
             }
 
-            write_string($im, 3, $cell_width * $j, $lineHeight * $row, $booking_matrix[$i][$j][$k], $color);
+            // If is requested but open than make it to WANTED
+            if ($color === $color_red && $booking_matrix[$i][$j][$k]['content'] == "open") {
+                $booking_matrix[$i][$j][$k]['content'] = "WANTED";
+            }
+
+            write_string($im, 3, $cell_width * $j, $lineHeight * $row, $booking_matrix[$i][$j][$k]['content'], $color);
             $row++;
         }
         // Set row back to the first row if the current station for the next day
@@ -241,7 +283,6 @@ for ($i = 0; $i < count($booking_matrix); $i++) {
 }
 
 $row = $row + 3;
-
 
 
 // Remove duplicated users and sort them by their first names
@@ -264,7 +305,7 @@ for ($i = 0; $i < count($all_users); $i++) {
 $row += 2;
 
 $generated_time = new DateTime();
-write_string($im, 2, 5, $lineHeight * $row, "Generated " . $generated_time->format("d.m.Y H:i:s")." ".count($booking_matrix), $color_gray);
+write_string($im, 2, 5, $lineHeight * $row, "Generated " . $generated_time->format("d.m.Y H:i:s"), $color_gray);
 
 // Set content to gif and create image
 header('Content-type: image/png');
