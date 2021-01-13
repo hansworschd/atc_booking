@@ -6,12 +6,7 @@ if (isset($_GET['nextWeek'])) {
 
 include 'booking.php';
 
-/**
- * Get the bookings as json object
- * @param $date_start DateTime is the starting point
- * @return mixed
- */
-function get_json($date_start)
+function do_curl_request($date_start)
 {
     $curl = curl_init();
     $date_start_string = $date_start->format("d.m.Y");
@@ -43,7 +38,36 @@ function get_json($date_start)
     $response = curl_exec($curl);
 
     curl_close($curl);
-    return json_decode($response);
+    return $response;
+}
+
+/**
+ * Get the bookings as json object
+ * @param $date_start DateTime is the starting point
+ * @return mixed
+ */
+function get_json($date_start)
+{
+    $fileName = "cache.json";
+    if (isset($_GET['nextWeek'])) {
+        $fileName = "cache_next_week.json";
+    }
+
+    if (file_exists($fileName)) {
+        $fileTime = filemtime($fileName);
+        if (time() >= $fileTime + 60) {
+            // Request required
+            $response_json = do_curl_request($date_start);
+            file_put_contents($fileName, $response_json);
+        }
+    }
+    else{
+        $response_json = do_curl_request($date_start);
+        file_put_contents($fileName, $response_json);
+    }
+
+    $file_content = file_get_contents($fileName);
+    return json_decode($file_content);
 }
 
 /**
@@ -304,8 +328,15 @@ for ($i = 0; $i < count($all_users); $i++) {
 
 $row += 2;
 
+
+$fileName = "cache.json";
+if (isset($_GET['nextWeek'])) {
+    $fileName = "cache_next_week.json";
+}
+
 $generated_time = new DateTime();
-write_string($im, 2, 5, $lineHeight * $row, "Generated " . $generated_time->format("d.m.Y H:i:s"), $color_gray);
+$generated_time->setTimestamp( filemtime($fileName));
+write_string($im, 2, 5, $lineHeight * $row, "Caching timestamp " . $generated_time->format("d.m.Y H:i"), $color_gray);
 
 // Set content to gif and create image
 header('Content-type: image/png');
